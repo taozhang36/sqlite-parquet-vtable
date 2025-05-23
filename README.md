@@ -7,13 +7,15 @@ A SQLite [virtual table](https://sqlite.org/vtab.html) extension to expose Parqu
 
 This [blog post](https://cldellow.com/2018/06/22/sqlite-parquet-vtable.html) provides some context on why you might use this.
 
-## Installing
+## For Linux
 
-### Download
+### Installing
+
+#### Download
 
 You can fetch a version built for Ubuntu 16.04 at https://s3.amazonaws.com/cldellow/public/libparquet/libparquet.so.xz
 
-### Building
+#### Building
 
 ```
 ./make-linux
@@ -23,11 +25,11 @@ The first run will git clone a bunch of libraries, patch them to be statically l
 
 Subsequent builds will only build the parquet virtual table extension.
 
-### Building (release)
+#### Building (release)
 
 Run `./make-linux-pgo` to build an instrumented binary, run tests to collect real-life usage samples, then build an optimized binary. PGO seems to give a 5-10% reduction in query times.
 
-### Tests
+#### Tests
 
 Run:
 
@@ -59,6 +61,60 @@ You have the 32-bit SQLite installed. To fix this, do:
 ```
 sudo apt-get remove --purge sqlite3
 sudo apt-get install sqlite3:amd64
+```
+
+## For Windows
+
+The following steps were performed on Windows 10 x64 system.  
+
+### Build
+
+#### 1 Apache-arrow build
+
+Configure the environment and build Apache-arrow as follows:  
+
+https://github.com/apache/arrow/blob/apache-arrow-0.9.0/cpp/apidoc/Windows.md   
+
+Once the build is complete, files such as arrow.lib, arrow.dll, and so on are generated.   
+
+#### 2 Parquet-cpp build
+
+Configure the environment and build Parquet-cpp as follows:  
+
+https://github.com/apache/parquet-cpp/blob/apache-parquet-cpp-1.4.0/docs/Windows.md  
+
+The version of boost-cpp can be specified as 1.66.0 to avoid version compatibility issues. Once the build is complete, files such as parquet.lib, parquet.dll, and so on are generated.  
+
+#### 3 Sqlite3 build
+
+1 Download and extract the following three packages into the same folder.  
+sqlite-amalgamation-3490100.zip  
+sqlite-dll-win-x64-3490100.zip  
+sqlite-autoconf-3490100.tar.gz  
+2 Open the developer command prompt for VS 2017, switch to the above folder, and run the following command:   
+
+`lib /DEF:sqlite3.def /OUT:sqlite3.lib `
+
+After the command is executed, sqlite3.lib was generated.  
+
+#### 4 sqlite-parquet-vtable (windows) build
+
+1 Open the parquet directory of sqlite-parquet-vtable as dll in VS2017.  
+2 Configure the paths for dll, lib, and header files in VS2017.  
+3 Modify all the “constexpr” in type.h in the source code of arrow to “const”.  
+4 Build this project, if successful, will generate sqlite-parquet-vtable.lib and sqlite-parquet-vtable.dll.  
+
+### Use
+
+1 Create a new directory{your-directory}   
+2  Copy the generated arrow.dll, parquet.dll, sqlite-parquet-vtable.dll from steps 1-4 to {your directory}, and also copy all dlls from C:\local\boost_1_66_0\lib64-msvc-14.1（Your actual boost installation path.） to {your directory}.  
+
+```
+$ sqlite\sqlite3.exe
+sqlite> .load sqlite-parquet-vtable.dll
+sqlite> CREATE VIRTUAL TABLE demo USING parquet('parquet-generator/99-rows-1.parquet');
+sqlite> SELECT * FROM demo;
+...if all goes well, you'll see data here!...
 ```
 
 ## Supported features
